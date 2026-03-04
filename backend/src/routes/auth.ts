@@ -699,6 +699,67 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
         return reply.type(mime).send(content);
     });
 
+    // GET /api/auth/branding (oeffentlich, kein Auth)
+    // Liefert Branding-Info fuer die Login-Seite
+    fastify.get('/branding', async (_request: FastifyRequest, reply: FastifyReply) => {
+        try {
+            const tenant = await db('tenants')
+                .where('is_active', true)
+                .orderBy('id', 'asc')
+                .first('id', 'name', 'logo_file');
+
+            return reply.send({
+                companyName: tenant?.name || 'MIKE WorkSpace',
+                hasLogo: !!(tenant?.logo_file),
+                logoUrl: tenant?.logo_file ? '/api/auth/branding/logo' : null,
+            });
+        } catch {
+            return reply.send({
+                companyName: 'MIKE WorkSpace',
+                hasLogo: false,
+                logoUrl: null,
+            });
+        }
+    });
+
+    // GET /api/auth/branding/logo (oeffentlich, kein Auth)
+    // Liefert das Logo des Default-Mandanten fuer die Login-Seite
+    fastify.get('/branding/logo', async (_request: FastifyRequest, reply: FastifyReply) => {
+        try {
+            const tenant = await db('tenants')
+                .where('is_active', true)
+                .whereNotNull('logo_file')
+                .orderBy('id', 'asc')
+                .first('logo_file');
+
+            if (!tenant?.logo_file) {
+                return reply.status(404).send({ error: 'Kein Logo vorhanden' });
+            }
+
+            const filePath = path.join(tenantLogoDir, String(tenant.logo_file));
+            if (!existsSync(filePath)) {
+                return reply.status(404).send({ error: 'Logo-Datei nicht gefunden' });
+            }
+
+            const content = await readFile(filePath);
+            const ext = path.extname(String(tenant.logo_file)).toLowerCase();
+            const mime = ext === '.png'
+                ? 'image/png'
+                : ext === '.webp'
+                    ? 'image/webp'
+                    : ext === '.gif'
+                        ? 'image/gif'
+                        : ext === '.svg'
+                            ? 'image/svg+xml'
+                            : 'image/jpeg';
+
+            reply.header('Cache-Control', 'public, max-age=600');
+            return reply.type(mime).send(content);
+        } catch {
+            return reply.status(500).send({ error: 'Fehler beim Laden des Logos' });
+        }
+    });
+
     // POST /api/auth/avatar
     fastify.post('/avatar', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const user = await db('users').where('id', request.user.userId).first();
