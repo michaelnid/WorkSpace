@@ -524,6 +524,9 @@ server {
     # Max Upload-Groesse (fuer Backup-Import)
     client_max_body_size 100M;
 
+    # MIME-Types
+    include /etc/nginx/mime.types;
+
     # API Proxy
     location /api/ {
         proxy_pass http://127.0.0.1:3000;
@@ -540,7 +543,7 @@ server {
 $PMA_LOCATION
 
     # Frontend (statisch)
-    root $APP_DIR/frontend;
+    root $APP_DIR/frontend/dist;
     index index.html;
 
     # SPA Fallback
