@@ -40,3 +40,11 @@ sudo bash install.sh
 ```
 
 Der Installer fuehrt interaktiv durch alle Schritte: Pakete, Node.js, MariaDB, Nginx, SSL (Let's Encrypt), systemd-Service.
+
+## Dev Update (SSH)
+
+Neusten Stand von GitHub holen und deployen (unabhaengig von Versionsnummern):
+
+```bash
+sudo bash /opt/mike-workspace/update.sh
+```
