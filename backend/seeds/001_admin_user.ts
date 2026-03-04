@@ -77,4 +77,45 @@ export async function seed(knex: Knex): Promise<void> {
             });
         }
     }
+
+    // Default-Mandant erstellen (falls keiner existiert)
+    const hasTenants = await knex.schema.hasTable('tenants');
+    if (hasTenants) {
+        const existingTenant = await knex('tenants').first();
+        if (!existingTenant) {
+            await knex('tenants').insert({
+                name: 'Hauptunternehmen',
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+            });
+        }
+
+        // Admin dem Default-Mandant zuweisen
+        if (admin) {
+            const defaultTenant = await knex('tenants').first();
+            if (defaultTenant) {
+                const hasUserTenants = await knex.schema.hasTable('user_tenants');
+                if (hasUserTenants) {
+                    const existingAssignment = await knex('user_tenants')
+                        .where('user_id', admin.id)
+                        .where('tenant_id', defaultTenant.id)
+                        .first();
+                    if (!existingAssignment) {
+                        await knex('user_tenants').insert({
+                            user_id: admin.id,
+                            tenant_id: defaultTenant.id,
+                        });
+                    }
+                }
+                // Default-Tenant am User setzen
+                const hasDefaultTenant = await knex.schema.hasColumn('users', 'default_tenant_id');
+                if (hasDefaultTenant) {
+                    await knex('users')
+                        .where('id', admin.id)
+                        .update({ default_tenant_id: defaultTenant.id });
+                }
+            }
+        }
+    }
 }
