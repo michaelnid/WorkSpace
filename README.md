@@ -30,7 +30,7 @@ Nein
 ## Installation
 
 ```bash
-curl -sSL https://github.com/michaelnid/WorkSpace/releases/latest/download/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/michaelnid/WorkSpace/main/install.sh | sudo bash
 ```
 
 Oder lokal:

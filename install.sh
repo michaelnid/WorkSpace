@@ -4,7 +4,7 @@
 # Fuer Debian 12
 #
 # Usage:
-#   curl -sSL https://github.com/michaelnid/WorkSpace/releases/latest/download/install.sh | sudo bash
+#   curl -sSL https://raw.githubusercontent.com/michaelnid/WorkSpace/main/install.sh | sudo bash
 #   oder lokal: sudo bash install.sh
 # ============================================
 
