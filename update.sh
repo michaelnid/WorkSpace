@@ -39,7 +39,8 @@ echo -e "  ${GREEN}[OK]${NC} Quellcode aktualisiert"
 # 2. Backend Dependencies
 echo -e "\n${CYAN}> Backend Dependencies...${NC}"
 cd "$APP_DIR/backend"
-sudo -u "$APP_USER" npm ci --omit=dev --silent 2>/dev/null || sudo -u "$APP_USER" npm install --omit=dev --silent 2>/dev/null
+sudo -u "$APP_USER" npm ci --omit=dev --silent --no-audit 2>/dev/null || sudo -u "$APP_USER" npm install --omit=dev --silent --no-audit 2>/dev/null
+sudo -u "$APP_USER" npm install --save-dev typescript tsx 2>/dev/null
 echo -e "  ${GREEN}[OK]${NC} Dependencies installiert"
 
 # 3. Frontend Build (falls Vite vorhanden)
@@ -56,7 +57,7 @@ fi
 # 4. Datenbank-Migrationen
 echo -e "\n${CYAN}> Datenbank-Migrationen...${NC}"
 cd "$APP_DIR/backend"
-sudo -u "$APP_USER" npx knex migrate:latest --knexfile knexfile.cjs 2>/dev/null
+sudo -u "$APP_USER" npx tsx node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>/dev/null
 echo -e "  ${GREEN}[OK]${NC} Migrationen ausgefuehrt"
 
 # 5. Service neu starten

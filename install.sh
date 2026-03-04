@@ -317,19 +317,18 @@ print_ok "Upload-Verzeichnisse vorbereitet"
 # Backend Dependencies
 print_step "Backend Dependencies installieren..."
 cd "$APP_DIR/backend"
-npm ci --omit=dev --silent 2>/dev/null || npm install --omit=dev --silent 2>/dev/null
+npm ci --omit=dev --silent --no-audit 2>/dev/null || npm install --omit=dev --silent --no-audit 2>/dev/null
 print_ok "Backend Dependencies installiert"
 
-# Backend kompilieren
-print_step "Backend kompilieren..."
-npm install --save-dev typescript 2>/dev/null
-npx tsc 2>/dev/null
-print_ok "Backend kompiliert"
+# Dev-Dependencies fuer Build und Migrationen (tsx, typescript)
+print_step "Build-Tools installieren..."
+npm install --save-dev typescript tsx 2>/dev/null
+print_ok "Build-Tools installiert"
 
 # Frontend bauen
 print_step "Frontend bauen..."
 cd "$APP_DIR/frontend"
-npm ci --silent 2>/dev/null || npm install --silent 2>/dev/null
+npm ci --silent --no-audit 2>/dev/null || npm install --silent --no-audit 2>/dev/null
 npm run build --silent 2>/dev/null
 print_ok "Frontend gebaut"
 
@@ -372,18 +371,18 @@ UPDATE_REQUIRE_HASH=true
 EOF
 print_ok ".env erstellt"
 
-# Datenbank-Migrationen
+# Datenbank-Migrationen (tsx fuer TypeScript-Migrationen)
 print_step "Datenbank-Schema aufsetzen..."
 cd "$APP_DIR/backend"
-if npx knex migrate:latest --knexfile knexfile.cjs; then
+if npx tsx node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>/dev/null; then
   print_ok "Tabellen erstellt"
 else
   print_error "Migration fehlgeschlagen! Details:"
-  npx knex migrate:latest --knexfile knexfile.cjs 2>&1 || true
+  npx tsx node_modules/.bin/knex migrate:latest --knexfile knexfile.ts 2>&1 || true
 fi
 
 # Seeds ausfuehren
-if npx knex seed:run --knexfile knexfile.cjs 2>/dev/null; then
+if npx tsx node_modules/.bin/knex seed:run --knexfile knexfile.ts 2>/dev/null; then
   print_ok "Seed-Daten eingefuegt"
 fi
 
@@ -618,7 +617,7 @@ Type=simple
 User=$APP_USER
 Group=$APP_USER
 WorkingDirectory=$APP_DIR/backend
-ExecStart=/usr/bin/node dist/server.js
+ExecStart=$(which npx) tsx src/server.ts
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
