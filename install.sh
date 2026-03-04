@@ -105,7 +105,7 @@ ask_password() {
 # ============================================
 APP_DIR="/opt/mike-workspace"
 APP_USER="mike"
-DOWNLOAD_URL="https://github.com/michaelnid/WorkSpace/releases/latest/download"
+GIT_REPO="https://github.com/michaelnid/WorkSpace.git"
 NODE_VERSION="20"
 
 # ============================================
@@ -226,9 +226,9 @@ print_ok "Paketquellen aktuell"
 
 print_step "Basis-Pakete installieren..."
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-  nginx mariadb-server curl unzip ufw gnupg2 \
+  nginx mariadb-server curl unzip ufw gnupg2 git \
   ca-certificates lsb-release software-properties-common > /dev/null 2>&1
-print_ok "nginx, mariadb-server, curl, unzip, ufw installiert"
+print_ok "nginx, mariadb-server, curl, unzip, ufw, git installiert"
 
 # Certbot fuer SSL
 if [ "$SETUP_SSL" = true ]; then
@@ -293,38 +293,18 @@ else
   print_ok "User '$APP_USER' existiert bereits"
 fi
 
-# Core herunterladen
-print_step "Core-Framework herunterladen..."
+# Repository klonen
+print_step "Repository von GitHub klonen..."
 mkdir -p "$APP_DIR"
-cd "$APP_DIR"
 
-if curl -sSL --fail "$DOWNLOAD_URL/core/latest.tar.gz" -o /tmp/mike-core.tar.gz 2>/dev/null; then
-  tar -xzf /tmp/mike-core.tar.gz -C "$APP_DIR"
-  rm -f /tmp/mike-core.tar.gz
-  # Apple-Metadaten entfernen (falls vom Mac gepackt)
-  find "$APP_DIR" -name '._*' -delete 2>/dev/null || true
-  # Alte .ts-Dateien entfernen (nur .js wird in Production gebraucht)
-  rm -f "$APP_DIR/backend/migrations/"*.ts 2>/dev/null || true
-  rm -f "$APP_DIR/backend/seeds/"*.ts 2>/dev/null || true
-  rm -f "$APP_DIR/backend/knexfile.ts" "$APP_DIR/backend/knexfile.js" 2>/dev/null || true
-  print_ok "Core entpackt nach $APP_DIR"
+if [ -d "$APP_DIR/.git" ]; then
+  print_ok "Repository existiert bereits, aktualisiere..."
+  cd "$APP_DIR"
+  git pull origin main 2>/dev/null || true
 else
-  # Fallback: lokale Installation (wenn das Script im Projektordner ausgefuehrt wird)
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  if [ -d "$SCRIPT_DIR/backend" ] && [ -d "$SCRIPT_DIR/frontend" ]; then
-    print_warn "Download nicht verfuegbar, verwende lokale Dateien..."
-    cp -r "$SCRIPT_DIR/backend" "$APP_DIR/"
-    if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-      cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
-    elif [ -d "$SCRIPT_DIR/frontend" ]; then
-      cp -r "$SCRIPT_DIR/frontend" "$APP_DIR/"
-    fi
-    print_ok "Lokale Dateien kopiert nach $APP_DIR"
-  else
-    print_error "Core konnte nicht heruntergeladen werden und keine lokalen Dateien gefunden."
-    exit 1
-  fi
+  git clone "$GIT_REPO" "$APP_DIR" 2>/dev/null
 fi
+print_ok "Repository geklont nach $APP_DIR"
 
 # Plugins-Ordner
 mkdir -p "$APP_DIR/plugins"
@@ -332,13 +312,26 @@ mkdir -p "$APP_DIR/uploads"
 mkdir -p "$APP_DIR/uploads/documents"
 mkdir -p "$APP_DIR/uploads/avatars"
 mkdir -p "$APP_DIR/uploads/tenant-logos"
-print_ok "Upload-Verzeichnisse vorbereitet (uploads/documents, uploads/avatars, uploads/tenant-logos)"
+print_ok "Upload-Verzeichnisse vorbereitet"
 
-# Dependencies
-print_step "NPM Dependencies installieren..."
+# Backend Dependencies
+print_step "Backend Dependencies installieren..."
 cd "$APP_DIR/backend"
 npm ci --omit=dev --silent 2>/dev/null || npm install --omit=dev --silent 2>/dev/null
-print_ok "Dependencies installiert"
+print_ok "Backend Dependencies installiert"
+
+# Backend kompilieren
+print_step "Backend kompilieren..."
+npm install --save-dev typescript 2>/dev/null
+npx tsc 2>/dev/null
+print_ok "Backend kompiliert"
+
+# Frontend bauen
+print_step "Frontend bauen..."
+cd "$APP_DIR/frontend"
+npm ci --silent 2>/dev/null || npm install --silent 2>/dev/null
+npm run build --silent 2>/dev/null
+print_ok "Frontend gebaut"
 
 # ============================================
 # Schritt 6: Konfiguration
