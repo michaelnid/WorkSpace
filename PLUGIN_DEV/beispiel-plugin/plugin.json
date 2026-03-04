@@ -1,0 +1,89 @@
+{
+    "id": "example",
+    "name": "Beispiel-Plugin",
+    "version": "1.0.0",
+    "description": "Funktionierendes Beispiel-Plugin als Vorlage für Plugin-Entwicklung",
+    "author": "MIKE Core Team",
+    "dependencies": [],
+    "backend_entry": "backend/index.ts",
+    "frontend_entry": "frontend/index.tsx",
+    "nav_icon": "N",
+    "nav_label": "Notizen",
+    "nav_order": 200,
+    "permissions": [
+        "example.view",
+        "example.create",
+        "example.edit",
+        "example.delete"
+    ],
+    "settings_page": false,
+    "schema": {
+        "example_notes": {
+            "description": "Notizen mit Titel und Inhalt",
+            "columns": {
+                "id": {
+                    "type": "increments",
+                    "primary": true
+                },
+                "tenant_id": {
+                    "type": "integer",
+                    "unsigned": true,
+                    "nullable": false,
+                    "references": "tenants.id"
+                },
+                "title": {
+                    "type": "string",
+                    "length": 200,
+                    "nullable": false
+                },
+                "content": {
+                    "type": "text",
+                    "nullable": true
+                },
+                "created_by": {
+                    "type": "integer",
+                    "unsigned": true,
+                    "nullable": true,
+                    "references": "users.id"
+                },
+                "created_at": {
+                    "type": "timestamp",
+                    "nullable": false,
+                    "default": "now()"
+                }
+            }
+        }
+    },
+    "api": [
+        {
+            "method": "GET",
+            "path": "/notes",
+            "permission": "example.view",
+            "description": "Alle Notizen abrufen"
+        },
+        {
+            "method": "POST",
+            "path": "/notes",
+            "permission": "example.create",
+            "description": "Neue Notiz erstellen"
+        },
+        {
+            "method": "PUT",
+            "path": "/notes/:id",
+            "permission": "example.edit",
+            "description": "Notiz bearbeiten"
+        },
+        {
+            "method": "DELETE",
+            "path": "/notes/:id",
+            "permission": "example.delete",
+            "description": "Notiz löschen"
+        }
+    ],
+    "provides": [
+        "example.note.created",
+        "example.note.updated",
+        "example.note.deleted"
+    ],
+    "uses": {}
+}
