@@ -298,12 +298,10 @@ print_step "Repository von GitHub klonen..."
 mkdir -p "$APP_DIR"
 
 if [ -d "$APP_DIR/.git" ]; then
-  print_ok "Repository existiert bereits, aktualisiere..."
-  cd "$APP_DIR"
-  git pull origin main 2>/dev/null || true
-else
-  git clone "$GIT_REPO" "$APP_DIR" 2>/dev/null
+  print_ok "Vorhandenes Repository gefunden, verwerfe lokalen Stand..."
+  rm -rf "$APP_DIR"
 fi
+git clone "$GIT_REPO" "$APP_DIR" 2>/dev/null
 print_ok "Repository geklont nach $APP_DIR"
 
 # Plugins-Ordner
