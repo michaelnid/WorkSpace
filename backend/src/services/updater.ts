@@ -763,8 +763,7 @@ function verifyDownloadedArtifact(params: {
     const sha256 = createHash('sha256').update(archiveBuffer).digest('hex');
 
     if (config.update.requireHash && !expectedHash) {
-        console.warn(`[Updater] Kein Hash fuer '${artifactName}' vorhanden, ueberspringe Hash-Pruefung`);
-        return;
+        throw new Error(`Hash-Pruefung erforderlich, aber kein Hash fuer '${artifactName}' vorhanden`);
     }
     if (expectedHash && expectedHash !== sha256) {
         throw new Error(`Hash-Pruefung fehlgeschlagen fuer '${artifactName}' (erwartet ${expectedHash.slice(0, 12)}..., erhalten ${sha256.slice(0, 12)}...)`);
