@@ -30,7 +30,11 @@ Nein
 ## Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/michaelnid/WorkSpace/main/install.sh | sudo bash
+INSTALL_URL="https://raw.githubusercontent.com/michaelnid/WorkSpace/04ac4cc6f06808a6d496d9198f4dc2700bde4847/install.sh"
+INSTALL_SHA256="153ace65d13da3c3ad046d712b4159ac35d6da08639f5a87fdc6555616280938"
+curl -fSLo install.sh "$INSTALL_URL"
+echo "$INSTALL_SHA256  install.sh" | sha256sum -c -
+sudo bash install.sh
 ```
 
 Oder lokal:

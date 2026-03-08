@@ -4,7 +4,7 @@
 # Fuer Debian 12
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/michaelnid/WorkSpace/main/install.sh | sudo bash
+#   curl -fSLo install.sh https://raw.githubusercontent.com/michaelnid/WorkSpace/04ac4cc6f06808a6d496d9198f4dc2700bde4847/install.sh && echo "153ace65d13da3c3ad046d712b4159ac35d6da08639f5a87fdc6555616280938  install.sh" | sha256sum -c - && sudo bash install.sh
 #   oder lokal: sudo bash install.sh
 # ============================================
 
@@ -127,7 +127,7 @@ echo ""
 if [ "$(id -u)" -ne 0 ]; then
   print_error "Dieses Script muss als root ausgefuehrt werden."
   echo ""
-  echo -e "  Verwende: ${CYAN}curl -sSL $DOWNLOAD_URL/install.sh | sudo bash${NC}"
+  echo -e "  Verwende: ${CYAN}curl -fSLo install.sh https://raw.githubusercontent.com/michaelnid/WorkSpace/04ac4cc6f06808a6d496d9198f4dc2700bde4847/install.sh && echo \"153ace65d13da3c3ad046d712b4159ac35d6da08639f5a87fdc6555616280938  install.sh\" | sha256sum -c - && sudo bash install.sh${NC}"
   echo -e "  oder:     ${CYAN}sudo bash install.sh${NC}"
   echo ""
   exit 1
