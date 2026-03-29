@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@mike/context/AuthContext';
 import { useToast, useModal } from '@mike/components/ModalProvider';
 
@@ -38,6 +38,8 @@ interface TodoItem {
     due_date: string | null;
     completed_at: string | null;
     created_at: string;
+    total_seconds: number;
+    timer_started_at: string | null;
 }
 
 interface TodoStats {
@@ -80,6 +82,22 @@ function isOverdue(dueDate: string | null, status: string): boolean {
     return new Date(dueDate) < new Date(new Date().toDateString());
 }
 
+function formatTime(totalSeconds: number): string {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function getElapsedSeconds(item: TodoItem): number {
+    let seconds = item.total_seconds || 0;
+    if (item.timer_started_at) {
+        seconds += Math.floor((Date.now() - new Date(item.timer_started_at).getTime()) / 1000);
+    }
+    return seconds;
+}
+
 export default function TodoPage() {
     const toast = useToast();
     const modal = useModal();
@@ -95,6 +113,20 @@ export default function TodoPage() {
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState<string>('mittel');
     const [dueDate, setDueDate] = useState('');
+
+    // Timer-Tick: Jede Sekunde neu rendern wenn ein Timer laeuft
+    const [, setTick] = useState(0);
+    const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        const hasRunning = items.some((i) => i.timer_started_at);
+        if (hasRunning && !tickRef.current) {
+            tickRef.current = setInterval(() => setTick((t) => t + 1), 1000);
+        } else if (!hasRunning && tickRef.current) {
+            clearInterval(tickRef.current);
+            tickRef.current = null;
+        }
+        return () => { if (tickRef.current) clearInterval(tickRef.current); };
+    }, [items]);
 
     // Edit
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -151,28 +183,15 @@ export default function TodoPage() {
         }
     };
 
-    const toggleStatus = async (item: TodoItem) => {
-        const nextStatus = item.status === 'erledigt' ? 'offen'
-            : item.status === 'offen' ? 'in_bearbeitung'
-            : 'erledigt';
+    const setStatus = async (item: TodoItem, nextStatus: string) => {
         const res = await apiFetch(`/api/plugins/todo/${item.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: nextStatus }),
         });
         if (res.ok) {
-            await Promise.all([loadItems(), loadStats()]);
-        }
-    };
-
-    const markDone = async (item: TodoItem) => {
-        const res = await apiFetch(`/api/plugins/todo/${item.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'erledigt' }),
-        });
-        if (res.ok) {
-            toast.success('Aufgabe erledigt');
+            if (nextStatus === 'erledigt') toast.success('Aufgabe erledigt');
+            if (nextStatus === 'in_bearbeitung') toast.success('Timer gestartet');
             await Promise.all([loadItems(), loadStats()]);
         }
     };
@@ -344,7 +363,7 @@ export default function TodoPage() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
                                     {/* Status-Checkbox */}
                                     <button
-                                        onClick={() => isDone ? toggleStatus(item) : markDone(item)}
+                                        onClick={() => isDone ? setStatus(item, 'offen') : setStatus(item, 'erledigt')}
                                         style={{
                                             width: 28, height: 28, borderRadius: '50%',
                                             border: isDone ? '2px solid var(--color-success)' : '2px solid var(--color-border)',
@@ -404,15 +423,41 @@ export default function TodoPage() {
                                     </div>
 
                                     {/* Aktionen */}
-                                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                                        {!isDone && (
+                                    <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+                                        {/* Zeitanzeige */}
+                                        {(item.total_seconds > 0 || item.timer_started_at) && (
+                                            <span style={{
+                                                fontSize: 'var(--font-size-xs)',
+                                                fontFamily: 'monospace',
+                                                color: item.timer_started_at ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                                fontWeight: item.timer_started_at ? 600 : 400,
+                                                marginRight: 4,
+                                            }}>
+                                                {formatTime(getElapsedSeconds(item))}
+                                            </span>
+                                        )}
+                                        {!isDone && item.status === 'offen' && (
                                             <button
-                                                className="btn btn-secondary btn-sm"
-                                                onClick={() => toggleStatus(item)}
-                                                style={{ padding: '4px 8px', fontSize: 'var(--font-size-xs)' }}
-                                                title={item.status === 'offen' ? 'Starten' : 'Status wechseln'}
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => setStatus(item, 'in_bearbeitung')}
+                                                style={{ padding: '4px 10px', fontSize: 'var(--font-size-xs)' }}
                                             >
-                                                {item.status === 'offen' ? 'Starten' : 'Offen'}
+                                                Starten
+                                            </button>
+                                        )}
+                                        {!isDone && item.status === 'in_bearbeitung' && (
+                                            <button
+                                                className="btn btn-sm"
+                                                onClick={() => setStatus(item, 'erledigt')}
+                                                style={{
+                                                    padding: '4px 10px',
+                                                    fontSize: 'var(--font-size-xs)',
+                                                    background: 'var(--color-success)',
+                                                    color: '#fff',
+                                                    border: 'none',
+                                                }}
+                                            >
+                                                Abschliessen
                                             </button>
                                         )}
                                         <button

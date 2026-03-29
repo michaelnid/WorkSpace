@@ -101,6 +101,19 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
 
         if (body.status !== undefined) {
             update.status = body.status;
+
+            // Timer-Logik: "Starten" startet den Timer, "Erledigt"/"Offen" stoppt ihn
+            if (body.status === 'in_bearbeitung' && existing.status !== 'in_bearbeitung') {
+                // Timer starten
+                update.timer_started_at = new Date();
+            } else if (body.status !== 'in_bearbeitung' && existing.timer_started_at) {
+                // Timer stoppen und Sekunden addieren
+                const started = new Date(existing.timer_started_at).getTime();
+                const elapsed = Math.floor((Date.now() - started) / 1000);
+                update.total_seconds = (existing.total_seconds || 0) + elapsed;
+                update.timer_started_at = null;
+            }
+
             if (body.status === 'erledigt' && existing.status !== 'erledigt') {
                 update.completed_at = new Date();
             } else if (body.status !== 'erledigt') {
