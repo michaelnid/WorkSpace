@@ -378,6 +378,9 @@ COOKIE_SECURE=auto
 # Update (GitHub Releases)
 UPDATE_URL=https://api.github.com/repos/michaelnid/WorkSpace
 UPDATE_REQUIRE_HASH=true
+
+# Plugin-Katalog (GitHub Pages)
+PLUGIN_URL=https://michaelnid.github.io/WorkSpace-Plugins
 EOF
 print_ok ".env erstellt"
 
