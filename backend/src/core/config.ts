@@ -91,7 +91,6 @@ export const config = {
 
     update: {
         url: optionalEnv('UPDATE_URL', 'https://api.github.com/repos/michaelnid/WorkSpace'),
-        pluginUrl: optionalEnv('PLUGIN_URL', ''),
         requireHash: optionalBoolEnv('UPDATE_REQUIRE_HASH', true),
         backupDir: optionalEnv('UPDATE_BACKUP_DIR', ''),
         maxBackups: { main: 5, dev: 5, experimental: 10 } as Record<string, number>,

@@ -31,11 +31,11 @@ interface CoreUpdate {
 interface PluginUpdate {
     pluginId: string;
     current: string;
-    remote: { version: string; changelog: string; released_at: string };
-    available: boolean;
+    available: string;
+    hasUpdate: boolean;
 }
 
-interface RemotePluginEntry {
+interface LocalPluginEntry {
     id: string;
     name: string;
     description: string;
@@ -145,11 +145,11 @@ export default function UpdateManager() {
 
     const [core, setCore] = useState<CoreUpdate | null>(null);
     const [plugins, setPlugins] = useState<PluginUpdate[]>([]);
-    const [remotePlugins, setRemotePlugins] = useState<RemotePluginEntry[]>([]);
+    const [localPlugins, setLocalPlugins] = useState<LocalPluginEntry[]>([]);
     const [installedPlugins, setInstalledPlugins] = useState<InstalledPlugin[]>([]);
     const [backups, setBackups] = useState<BackupEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [installing, setInstalling] = useState<string | null>(null);
+    const [toggling, setToggling] = useState<string | null>(null);
     const [task, setTask] = useState<UpdateTaskPayload | null>(null);
 
     // Branch state
@@ -189,7 +189,7 @@ export default function UpdateManager() {
                 const data = await res.json();
                 setCore(data.core);
                 setPlugins(Array.isArray(data.plugins) ? data.plugins : []);
-                setRemotePlugins(Array.isArray(data.catalog) ? data.catalog : []);
+                setLocalPlugins(Array.isArray(data.catalog) ? data.catalog : []);
                 setInstalledPlugins(Array.isArray(data.installedPlugins) ? data.installedPlugins : []);
                 setBackups(Array.isArray(data.backups) ? data.backups : []);
             }
@@ -333,7 +333,7 @@ export default function UpdateManager() {
                 const data = await res.json();
                 setCore(data.core);
                 setPlugins(Array.isArray(data.plugins) ? data.plugins : []);
-                setRemotePlugins(Array.isArray(data.catalog) ? data.catalog : []);
+                setLocalPlugins(Array.isArray(data.catalog) ? data.catalog : []);
                 setInstalledPlugins(Array.isArray(data.installedPlugins) ? data.installedPlugins : []);
                 setBackups(Array.isArray(data.backups) ? data.backups : []);
                 return;
@@ -342,71 +342,49 @@ export default function UpdateManager() {
         await checkUpdates();
     };
 
-    const installPlugin = async (pluginId: string) => {
-        const ok = await modal.confirm({ title: 'Plugin installieren', message: `Plugin "${pluginId}" installieren? Server wird neu gestartet.`, confirmText: 'Installieren', variant: 'warning' });
+    const togglePlugin = async (pluginId: string, activate: boolean) => {
+        const action = activate ? 'aktivieren' : 'deaktivieren';
+        const ok = await modal.confirm({ title: `Plugin ${action}`, message: `Plugin "${pluginId}" ${action}? Server muss danach neu gestartet werden.`, confirmText: activate ? 'Aktivieren' : 'Deaktivieren', variant: 'warning' });
         if (!ok) return;
-        setInstalling(pluginId);
-        setTask(null);
+        setToggling(pluginId);
         try {
-            const res = await apiFetch(`/api/admin/updates/install-plugin/${pluginId}`, { method: 'POST' });
+            const endpoint = activate ? 'activate-plugin' : 'deactivate-plugin';
+            const res = await apiFetch(`/api/admin/updates/${endpoint}/${pluginId}`, { method: 'POST' });
             const data = await res.json();
-            if (!res.ok || !data?.success || !data?.taskId) {
-                toast.error(data?.error || `Plugin ${pluginId} konnte nicht gestartet werden`);
+            if (!res.ok || !data?.success) {
+                toast.error(data?.error || `Plugin ${pluginId} konnte nicht ${action === 'aktivieren' ? 'aktiviert' : 'deaktiviert'} werden`);
                 return;
             }
-            const finalTask = await pollTask(String(data.taskId));
-            if (!finalTask) { toast.error('Status konnte nicht abgerufen werden.'); return; }
-            if (finalTask.status === 'error') { toast.error(finalTask.error || `Plugin ${pluginId} fehlgeschlagen`); return; }
-            toast.success(`Plugin ${pluginId} erfolgreich installiert. Server startet neu.`);
-            await waitForUpdatesEndpoint();
-        } finally { setInstalling(null); }
-    };
-
-    const updatePlugin = async (pluginId: string) => {
-        const ok = await modal.confirm({ title: 'Plugin aktualisieren', message: `Plugin "${pluginId}" aktualisieren?`, confirmText: 'Aktualisieren', variant: 'warning' });
-        if (!ok) return;
-        setInstalling(pluginId);
-        setTask(null);
-        try {
-            const res = await apiFetch(`/api/admin/updates/update-plugin/${pluginId}`, { method: 'POST' });
-            const data = await res.json();
-            if (!res.ok || !data?.success || !data?.taskId) {
-                toast.error(data?.error || `Plugin ${pluginId} konnte nicht gestartet werden`);
-                return;
-            }
-            const finalTask = await pollTask(String(data.taskId));
-            if (!finalTask) { toast.error('Status konnte nicht abgerufen werden.'); return; }
-            if (finalTask.status === 'error') { toast.error(finalTask.error || `Plugin ${pluginId} fehlgeschlagen`); return; }
-            toast.success(`Plugin ${pluginId} erfolgreich aktualisiert. Server startet neu.`);
-            await waitForUpdatesEndpoint();
-        } finally { setInstalling(null); }
+            toast.success(data.message || `Plugin ${pluginId} ${action === 'aktivieren' ? 'aktiviert' : 'deaktiviert'}`);
+            await checkUpdates();
+        } finally { setToggling(null); }
     };
 
     const removePlugin = async (pluginId: string) => {
-        const ok = await modal.confirm({ title: 'Plugin entfernen', message: `Plugin "${pluginId}" wirklich entfernen?`, confirmText: 'Entfernen', variant: 'danger' });
+        const ok = await modal.confirm({ title: 'Plugin entfernen', message: `Plugin "${pluginId}" wirklich entfernen? DB-Eintraege, Permissions und Migrations-Tracking werden geloescht. Plugin-Dateien bleiben erhalten (kommen mit dem naechsten Update zurueck).`, confirmText: 'Entfernen', variant: 'danger' });
         if (!ok) return;
-        setInstalling(`remove-${pluginId}`);
+        setToggling(`remove-${pluginId}`);
         setTask(null);
         try {
             const res = await apiFetch(`/api/admin/updates/remove-plugin/${pluginId}`, { method: 'POST' });
             const data = await res.json();
             if (!res.ok || !data?.success || !data?.taskId) {
-                toast.error(data?.error || `Plugin ${pluginId} konnte nicht gestartet werden`);
+                toast.error(data?.error || `Plugin ${pluginId} konnte nicht entfernt werden`);
                 return;
             }
             const finalTask = await pollTask(String(data.taskId));
             if (!finalTask) { toast.error('Status konnte nicht abgerufen werden.'); return; }
             if (finalTask.status === 'error') { toast.error(finalTask.error || `Plugin ${pluginId} fehlgeschlagen`); return; }
-            toast.success(`Plugin ${pluginId} erfolgreich entfernt. Server startet neu.`);
-            await waitForUpdatesEndpoint();
-        } finally { setInstalling(null); }
+            toast.success(`Plugin ${pluginId} erfolgreich entfernt.`);
+            await checkUpdates();
+        } finally { setToggling(null); }
     };
 
     if (loading) return <div className="text-muted">Prüfe auf Updates...</div>;
 
     const pluginUpdatesById = new Map(plugins.map((entry) => [entry.pluginId, entry]));
     const installedPluginIds = new Set(installedPlugins.map((entry) => entry.pluginId));
-    const installableRemotePlugins = remotePlugins.filter((entry) => !installedPluginIds.has(entry.id));
+    const unregisteredPlugins = localPlugins.filter((entry) => !installedPluginIds.has(entry.id));
     const installedPluginsSorted = [...installedPlugins].sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
     // Neuestes Backup prüfen für Rollback-Info
@@ -745,66 +723,67 @@ export default function UpdateManager() {
                 </div>
             )}
 
-            {/* 6. Installierte Plugins */}
+            {/* 6. Plugin-Verwaltung */}
             <div className="card mb-md">
-                <div className="card-title mb-md">Installierte Plugins</div>
-                {installedPluginsSorted.length === 0 ? (
-                    <p className="text-muted">Keine Plugins installiert.</p>
+                <div className="card-title mb-md">Plugins</div>
+                <p className="text-muted" style={{ fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-md)' }}>
+                    Plugins werden mit dem Core-Repository ausgeliefert und bei Updates automatisch aktualisiert.
+                </p>
+                {installedPluginsSorted.length === 0 && unregisteredPlugins.length === 0 ? (
+                    <p className="text-muted">Keine Plugins im System vorhanden.</p>
                 ) : (
                     <div className="table-container">
                         <table>
                             <thead>
-                                <tr><th>Plugin</th><th>Name</th><th>Status</th><th>Installiert</th><th>Verfügbar</th><th>Aktionen</th></tr>
+                                <tr><th>Plugin</th><th>Name</th><th>Version</th><th>Status</th><th>Aktionen</th></tr>
                             </thead>
                             <tbody>
                                 {installedPluginsSorted.map((plugin) => {
                                     const updateState = pluginUpdatesById.get(plugin.pluginId);
-                                    const hasUpdate = Boolean(updateState?.available);
+                                    const hasUpdate = Boolean(updateState?.hasUpdate);
                                     return (
                                         <tr key={plugin.pluginId}>
                                             <td><strong>{plugin.pluginId}</strong></td>
                                             <td>{plugin.name}</td>
+                                            <td>
+                                                v{plugin.version}
+                                                {hasUpdate && <span className="badge badge-success" style={{ marginLeft: 6, fontSize: 'var(--font-size-xs)' }}>v{updateState?.available} verfuegbar</span>}
+                                            </td>
                                             <td>{plugin.isActive ? <span className="badge badge-success">Aktiv</span> : <span className="badge badge-warning">Inaktiv</span>}</td>
-                                            <td>v{plugin.version}</td>
-                                            <td>{hasUpdate ? <span className="badge badge-success">v{updateState?.remote.version}</span> : <span className="badge badge-info">Aktuell</span>}</td>
                                             <td style={{ display: 'flex', gap: 8 }}>
-                                                {hasUpdate && (
-                                                    <button className="btn btn-primary btn-sm" onClick={() => updatePlugin(plugin.pluginId)} disabled={installing !== null}>
-                                                        {installing === plugin.pluginId ? 'Aktualisiere...' : 'Aktualisieren'}
-                                                    </button>
-                                                )}
-                                                <button className="btn btn-danger btn-sm" onClick={() => removePlugin(plugin.pluginId)} disabled={installing !== null}>
-                                                    {installing === `remove-${plugin.pluginId}` ? 'Entferne...' : 'Entfernen'}
+                                                <button
+                                                    className={`btn btn-sm ${plugin.isActive ? 'btn-secondary' : 'btn-primary'}`}
+                                                    onClick={() => togglePlugin(plugin.pluginId, !plugin.isActive)}
+                                                    disabled={toggling !== null}
+                                                >
+                                                    {toggling === plugin.pluginId ? '...' : (plugin.isActive ? 'Deaktivieren' : 'Aktivieren')}
+                                                </button>
+                                                <button className="btn btn-danger btn-sm" onClick={() => removePlugin(plugin.pluginId)} disabled={toggling !== null}>
+                                                    {toggling === `remove-${plugin.pluginId}` ? 'Entferne...' : 'Entfernen'}
                                                 </button>
                                             </td>
                                         </tr>
                                     );
                                 })}
+                                {unregisteredPlugins.map((entry) => (
+                                    <tr key={entry.id}>
+                                        <td><strong>{entry.id}</strong></td>
+                                        <td>{entry.name}</td>
+                                        <td>v{entry.version}</td>
+                                        <td><span className="badge badge-info">Nicht registriert</span></td>
+                                        <td>
+                                            <button
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => togglePlugin(entry.id, true)}
+                                                disabled={toggling !== null}
+                                            >
+                                                {toggling === entry.id ? '...' : 'Aktivieren'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
-                    </div>
-                )}
-            </div>
-
-            {/* 7. Verfügbare Plugins */}
-            <div className="card">
-                <div className="card-title mb-md">Verfügbare Plugins</div>
-                {installableRemotePlugins.length === 0 ? (
-                    <p className="text-muted">Keine weiteren Plugins verfügbar.</p>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
-                        {installableRemotePlugins.map((entry) => (
-                            <div key={entry.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md)' }}>
-                                <div style={{ fontWeight: 600 }}>{entry.name}</div>
-                                <p className="text-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4 }}>{entry.description}</p>
-                                <div className="flex-between mt-md">
-                                    <span className="text-muted" style={{ fontSize: 'var(--font-size-xs)' }}>v{entry.version} - {entry.author}</span>
-                                    <button className="btn btn-primary btn-sm" onClick={() => installPlugin(entry.id)} disabled={installing !== null}>
-                                        {installing === entry.id ? 'Installiere...' : 'Installieren'}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 )}
             </div>

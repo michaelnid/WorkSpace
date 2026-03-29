@@ -71,16 +71,18 @@ uploads/
 documents/
 
 # -------------------------
-# Kompilierte Plugin-Pakete
+# Kompilierte Artefakte
 # -------------------------
 *.tar.gz
 *.mikeplugin
 
 # -------------------------
-# Plugin-Entwicklungsdokumentation
-# (Lebt im separaten Plugin-Repo)
+# Plugin-Laufzeitdaten
+# (User-Daten die Plugins zur Laufzeit erstellen)
 # -------------------------
-PLUGIN_DEV/
+plugins/*/data/
+
+
 
 # -------------------------
 # IDE / Editor
@@ -124,4 +126,4 @@ coverage/
 .cache/
 tmp/
 temp/
-docs/
+

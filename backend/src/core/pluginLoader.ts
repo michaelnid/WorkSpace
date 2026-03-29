@@ -51,7 +51,7 @@ export async function discoverPlugins(): Promise<DiscoveredPlugin[]> {
         const entries = await fs.readdir(pluginsDir, { withFileTypes: true });
 
         for (const entry of entries) {
-            if (!entry.isDirectory() || entry.name.startsWith('_')) continue;
+            if (!entry.isDirectory() || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
 
             const manifestPath = path.join(pluginsDir, entry.name, 'plugin.json');
             try {
@@ -149,12 +149,13 @@ async function resolveBackendImportPath(plugin: DiscoveredPlugin): Promise<strin
     const ext = path.extname(entry);
     const candidates: string[] = [];
 
+    // TypeScript wird direkt von tsx unterstuetzt — kein Kompilieren noetig
     if (ext === '.ts' || ext === '.tsx') {
-        candidates.push(entryPath.replace(/\.(ts|tsx)$/i, '.js'));
+        candidates.push(entryPath);
     }
 
     if (!ext) {
-        candidates.push(`${entryPath}.js`, `${entryPath}.mjs`, `${entryPath}.cjs`, `${entryPath}.ts`);
+        candidates.push(`${entryPath}.ts`, `${entryPath}.js`, `${entryPath}.mjs`, `${entryPath}.cjs`);
     }
 
     candidates.push(entryPath);
@@ -172,10 +173,43 @@ async function resolveBackendImportPath(plugin: DiscoveredPlugin): Promise<strin
     throw new Error(`Backend-Entry nicht gefunden: ${entry} (${uniqueCandidates.join(', ')})`);
 }
 
+/**
+ * Auto-Registrierung: Plugins die im Dateisystem existieren aber nicht
+ * in der DB sind, werden automatisch registriert und aktiviert.
+ */
+async function autoRegisterPlugins(discovered: DiscoveredPlugin[]): Promise<void> {
+    const db = getDatabase();
+
+    for (const plugin of discovered) {
+        const { manifest } = plugin;
+        const existing = await db('plugins').where('plugin_id', manifest.id).first();
+
+        if (!existing) {
+            console.log(`[PluginLoader] Neues Plugin entdeckt: ${manifest.name} v${manifest.version} — registriere automatisch`);
+            await db('plugins').insert({
+                plugin_id: manifest.id,
+                name: manifest.name,
+                version: manifest.version,
+                is_active: true,
+                installed_at: new Date(),
+            });
+        } else if (existing.version !== manifest.version) {
+            // Version im Dateisystem ist neuer (nach git pull/update.sh)
+            await db('plugins').where('plugin_id', manifest.id).update({
+                version: manifest.version,
+                name: manifest.name,
+            });
+        }
+    }
+}
+
 export async function loadPlugins(fastify: FastifyInstance): Promise<void> {
     const db = getDatabase();
     const discovered = await discoverPlugins();
     loadedPlugins.clear();
+
+    // Auto-Registrierung: Neue Plugins werden automatisch in die DB aufgenommen
+    await autoRegisterPlugins(discovered);
 
     // Nur aktivierte Plugins laden
     const activePlugins = await db('plugins').where('is_active', true).select('plugin_id');
@@ -194,7 +228,7 @@ export async function loadPlugins(fastify: FastifyInstance): Promise<void> {
                 await registerPluginPermissions(manifest.id, manifest.permissions);
             }
 
-            // Backend-Plugin dynamisch importieren
+            // Backend-Plugin dynamisch importieren (tsx unterstuetzt .ts direkt)
             const pluginPath = await resolveBackendImportPath(plugin);
             const pluginModule = await import(pathToFileURL(pluginPath).href);
 
@@ -211,7 +245,7 @@ export async function loadPlugins(fastify: FastifyInstance): Promise<void> {
                 await knex.migrate.latest({
                     directory: migrationsDir,
                     tableName: `knex_migrations_${manifest.id}`,
-                    loadExtensions: ['.js'],
+                    loadExtensions: ['.js', '.cjs', '.ts'],
                 });
                 console.log(`[PluginLoader] Migrationen fuer ${manifest.id} ausgefuehrt`);
             } catch {
@@ -240,7 +274,7 @@ export async function loadPlugins(fastify: FastifyInstance): Promise<void> {
                     }
                 }
             } else if (installedVersion !== manifest.version) {
-                // Version-Upgrade
+                // Version-Upgrade (nach git pull / update.sh)
                 if (hooks.onUpgrade) {
                     try {
                         console.log(`[PluginLoader] onUpgrade fuer ${manifest.id}: ${installedVersion} → ${manifest.version}`);

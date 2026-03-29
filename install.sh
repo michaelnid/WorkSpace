@@ -310,9 +310,8 @@ fi
 git clone "$GIT_REPO" "$APP_DIR" 2>/dev/null
 print_ok "Repository geklont nach $APP_DIR"
 
-# Plugins-Ordner (mit CommonJS-Kontext, da Backend ESM ist)
+# Plugins-Ordner (Plugins werden mit dem Core-Repo ausgeliefert)
 mkdir -p "$APP_DIR/plugins"
-echo '{"type":"commonjs"}' > "$APP_DIR/plugins/package.json"
 mkdir -p "$APP_DIR/uploads"
 mkdir -p "$APP_DIR/uploads/documents"
 mkdir -p "$APP_DIR/uploads/avatars"
@@ -379,9 +378,6 @@ COOKIE_SECURE=auto
 # Update (GitHub Releases)
 UPDATE_URL=https://api.github.com/repos/michaelnid/WorkSpace
 UPDATE_REQUIRE_HASH=true
-
-# Plugin-Katalog (GitHub Pages)
-PLUGIN_URL=https://michaelnid.github.io/WorkSpace-Plugins
 EOF
 print_ok ".env erstellt"
 

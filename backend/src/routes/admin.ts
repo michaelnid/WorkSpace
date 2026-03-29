@@ -1548,12 +1548,12 @@ export default async function adminRoutes(fastify: FastifyInstance): Promise<voi
 
     // GET /api/admin/updates/check
     fastify.get('/updates/check', { preHandler: [requirePermission('updates.manage')] }, async (request, reply) => {
-        const { checkCoreUpdate, checkPluginUpdates, getRemoteCatalog, getInstalledPlugins, getBackupsList } = await import('../services/updater.js');
+        const { checkCoreUpdate, checkPluginUpdates, getLocalPluginCatalog, getInstalledPlugins, getBackupsList } = await import('../services/updater.js');
 
         const [coreUpdate, pluginUpdates, catalog, installedPlugins, backups] = await Promise.all([
             checkCoreUpdate(),
             checkPluginUpdates(),
-            getRemoteCatalog(),
+            getLocalPluginCatalog(),
             getInstalledPlugins(),
             getBackupsList(),
         ]);
@@ -1629,62 +1629,42 @@ export default async function adminRoutes(fastify: FastifyInstance): Promise<voi
         return reply.send({ task });
     });
 
-    // POST /api/admin/updates/install-plugin/:id
-    fastify.post('/updates/install-plugin/:id', { preHandler: [requirePermission('updates.manage')] }, async (request, reply) => {
+    // POST /api/admin/updates/activate-plugin/:id
+    fastify.post('/updates/activate-plugin/:id', { preHandler: [requirePermission('updates.manage')] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const { installPlugin } = await import('../services/updater.js');
-        const task = createUpdateTask('plugin-install', id);
+        const { activatePlugin } = await import('../services/updater.js');
 
         await fastify.audit.log({
-            action: 'admin.update.plugin_install',
+            action: 'admin.plugin.activate',
             category: 'admin',
             entityType: 'plugins',
             entityId: id,
         }, request);
 
-        runUpdateTask(task.id, async (reporter) => {
-            const result = await installPlugin(id, {
-                onProgress: ({ message, progress }) => reporter.log(message, progress),
-            });
-
-            if (!result.success) {
-                reporter.fail(result.error || `Plugin ${id} konnte nicht installiert werden`);
-                return;
-            }
-
-            reporter.success(`Plugin ${id} erfolgreich installiert`, result.version);
-        });
-
-        return reply.send({ success: true, taskId: task.id });
+        const result = await activatePlugin(id);
+        if (!result.success) {
+            return reply.status(400).send({ error: result.error });
+        }
+        return reply.send({ success: true, message: `Plugin ${id} aktiviert. Neustart erforderlich.` });
     });
 
-    // POST /api/admin/updates/update-plugin/:id
-    fastify.post('/updates/update-plugin/:id', { preHandler: [requirePermission('updates.manage')] }, async (request, reply) => {
+    // POST /api/admin/updates/deactivate-plugin/:id
+    fastify.post('/updates/deactivate-plugin/:id', { preHandler: [requirePermission('updates.manage')] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const { updatePlugin } = await import('../services/updater.js');
-        const task = createUpdateTask('plugin-update', id);
+        const { deactivatePlugin } = await import('../services/updater.js');
 
         await fastify.audit.log({
-            action: 'admin.update.plugin_update',
+            action: 'admin.plugin.deactivate',
             category: 'admin',
             entityType: 'plugins',
             entityId: id,
         }, request);
 
-        runUpdateTask(task.id, async (reporter) => {
-            const result = await updatePlugin(id, {
-                onProgress: ({ message, progress }) => reporter.log(message, progress),
-            });
-
-            if (!result.success) {
-                reporter.fail(result.error || `Plugin ${id} konnte nicht aktualisiert werden`);
-                return;
-            }
-
-            reporter.success(`Plugin ${id} erfolgreich aktualisiert`, result.version);
-        });
-
-        return reply.send({ success: true, taskId: task.id });
+        const result = await deactivatePlugin(id);
+        if (!result.success) {
+            return reply.status(400).send({ error: result.error });
+        }
+        return reply.send({ success: true, message: `Plugin ${id} deaktiviert. Neustart erforderlich.` });
     });
 
     // POST /api/admin/updates/remove-plugin/:id
@@ -1703,7 +1683,6 @@ export default async function adminRoutes(fastify: FastifyInstance): Promise<voi
         runUpdateTask(task.id, async (reporter) => {
             const result = await removePlugin(id, {
                 onProgress: ({ message, progress }) => reporter.log(message, progress),
-                fastify,
             });
 
             if (!result.success) {
