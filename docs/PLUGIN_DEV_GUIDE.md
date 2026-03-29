@@ -149,15 +149,19 @@ import { getDatabase } from '../../../backend/src/core/database.js';
 
 export async function routes(fastify: FastifyInstance): Promise<void> {
 
+    // WICHTIG: Jede Route MUSS { preHandler: [fastify.authenticate] } haben!
+    // Ohne Auth-PreHandler blockiert die PolicyEngine die Route mit 401
+    // und request.user ist null.
+
     // GET /api/plugins/mein-plugin/items
-    fastify.get('/items', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.get('/items', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const db = getDatabase();
         const items = await db('mein_plugin_items').select('*');
         return reply.send({ items });
     });
 
     // POST /api/plugins/mein-plugin/items
-    fastify.post('/items', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.post('/items', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const db = getDatabase();
         const body = request.body as { name: string; description?: string };
 
@@ -209,17 +213,28 @@ await sendMail({
 
 ### Authentication & Authorization
 
-Plugins sind automatisch **hinter dem Auth-Middleware** registriert (der Core prueft JWT).
+**WICHTIG:** Plugins werden NICHT automatisch mit Auth-Middleware versehen!
+Jede Route MUSS explizit `{ preHandler: [fastify.authenticate] }` setzen.
+Ohne Auth-PreHandler passiert folgendes:
 
-Fuer Permissions:
+1. Die **PolicyEngine** blockiert die Route automatisch mit 401
+2. `request.user` ist `null` — Zugriffe auf `request.user.userId` crashen mit 500
 
 ```typescript
+// Einfache Authentifizierung (jeder eingeloggte Nutzer):
+fastify.get('/items', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const userId = (request.user as any).userId;
+    // ...
+});
+
+// Mit Permission-Pruefung (nur Nutzer mit bestimmter Rolle):
 import { requirePermission } from '../../../backend/src/middleware/auth.js';
 
 fastify.get('/admin-items', {
     preHandler: [requirePermission('mein-plugin.admin')],
 }, async (request, reply) => {
     // Nur Nutzer mit 'mein-plugin.admin' Permission
+    // requirePermission prueft Auth automatisch mit
 });
 ```
 
@@ -750,7 +765,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
     const db = getDatabase();
 
     // GET /api/plugins/notizen/notes
-    fastify.get('/notes', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.get('/notes', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const userId = (request.user as any).userId;
         const notes = await db('plugin_notizen')
             .where('user_id', userId)
@@ -759,7 +774,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
     });
 
     // POST /api/plugins/notizen/notes
-    fastify.post('/notes', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.post('/notes', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const userId = (request.user as any).userId;
         const { title, content } = request.body as { title: string; content?: string };
 
@@ -781,7 +796,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
     });
 
     // DELETE /api/plugins/notizen/notes/:id
-    fastify.delete('/notes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.delete('/notes/:id', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as { id: string };
         const userId = (request.user as any).userId;
 
