@@ -114,7 +114,7 @@ export default function RegiePage() {
                 return (
                     <div key={path} className={`regie-page-item ${animatingTab === path ? 'pin-animate' : ''}`}>
                         <button className="regie-page-item-link" onClick={() => handleNavigate(item)}>
-                            <span className="regie-page-item-icon">{item.icon}</span>
+                            <span className="regie-page-item-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
                             <span className="regie-page-item-label">{item.label}</span>
                         </button>
                         <button
