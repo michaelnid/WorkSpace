@@ -333,7 +333,15 @@ Der Frontend-Entry exportiert **benannte Arrays** — keine Default-Exports!
 ```tsx
 // plugins/mein-plugin/frontend/index.tsx
 import { lazy } from 'react';
-import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '@mike/pluginRegistry';
+import type {
+    PluginRoute,
+    PluginNavItem,
+    PluginDashboardTile,
+    PluginExtensionTile,
+    PluginSettingsPanel,
+    PluginSearchProvider,
+    PluginQuickAction,
+} from '@mike/pluginRegistry';
 
 const MainPage = lazy(() => import('./pages/MainPage'));
 const DashboardTile = lazy(() => import('./tiles/DashboardTile'));
@@ -378,6 +386,15 @@ export const dashboardTiles: PluginDashboardTile[] = [
         defaultVisible: true,   // Standardmaessig sichtbar
     },
 ];
+
+// WICHTIG: Alle optionalen Exports muessen deklariert werden,
+// auch wenn sie nicht genutzt werden. Der Registry-Generator
+// importiert alle Felder via `import *` — fehlende Exports
+// verursachen Rollup/Vite-Build-Warnungen.
+export const extensionTiles: PluginExtensionTile[] = [];
+export const settingsPanel: PluginSettingsPanel | undefined = undefined;
+export const searchProvider: PluginSearchProvider | undefined = undefined;
+export const quickActions: PluginQuickAction[] = [];
 ```
 
 ### Verfuegbare Registry-Exports

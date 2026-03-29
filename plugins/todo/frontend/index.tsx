@@ -1,5 +1,13 @@
 import { lazy } from 'react';
-import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '@mike/pluginRegistry';
+import type {
+    PluginRoute,
+    PluginNavItem,
+    PluginDashboardTile,
+    PluginExtensionTile,
+    PluginSettingsPanel,
+    PluginSearchProvider,
+    PluginQuickAction,
+} from '@mike/pluginRegistry';
 
 const TodoPage = lazy(() => import('./pages/TodoPage'));
 
@@ -40,3 +48,9 @@ export const dashboardTiles: PluginDashboardTile[] = [
         defaultVisible: true,
     },
 ];
+
+// Optionale Exports — nicht genutzt, aber vom Registry-Generator erwartet
+export const extensionTiles: PluginExtensionTile[] = [];
+export const settingsPanel: PluginSettingsPanel | undefined = undefined;
+export const searchProvider: PluginSearchProvider | undefined = undefined;
+export const quickActions: PluginQuickAction[] = [];
