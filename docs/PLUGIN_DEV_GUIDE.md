@@ -164,7 +164,7 @@ export async function routes(fastify: FastifyInstance): Promise<void> {
         const [id] = await db('mein_plugin_items').insert({
             name: body.name,
             description: body.description || '',
-            created_by: (request as any).userId,
+            created_by: (request.user as any).userId,
             created_at: new Date(),
         });
 
@@ -734,7 +734,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
 
     // GET /api/plugins/notizen/notes
     fastify.get('/notes', async (request: FastifyRequest, reply: FastifyReply) => {
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
         const notes = await db('plugin_notizen')
             .where('user_id', userId)
             .orderBy('updated_at', 'desc');
@@ -743,7 +743,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
 
     // POST /api/plugins/notizen/notes
     fastify.post('/notes', async (request: FastifyRequest, reply: FastifyReply) => {
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
         const { title, content } = request.body as { title: string; content?: string };
 
         const [id] = await db('plugin_notizen').insert({
@@ -766,7 +766,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
     // DELETE /api/plugins/notizen/notes/:id
     fastify.delete('/notes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as { id: string };
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
 
         const deleted = await db('plugin_notizen')
             .where({ id, user_id: userId })

@@ -18,7 +18,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
 
     // GET /api/plugins/todo/ — Alle Aufgaben des Nutzers
     fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
         const { status, priority } = request.query as { status?: string; priority?: string };
 
         let query = db('plugin_todo_items').where('user_id', userId);
@@ -42,7 +42,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
 
     // POST /api/plugins/todo/ — Neue Aufgabe
     fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
         const body = request.body as TodoBody;
 
         if (!body.title || !body.title.trim()) {
@@ -80,7 +80,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
     // PUT /api/plugins/todo/:id — Aufgabe aktualisieren
     fastify.put('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as { id: string };
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
         const body = request.body as TodoUpdateBody;
 
         const existing = await db('plugin_todo_items')
@@ -126,7 +126,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
     // DELETE /api/plugins/todo/:id — Aufgabe loeschen
     fastify.delete('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as { id: string };
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
 
         const existing = await db('plugin_todo_items')
             .where({ id, user_id: userId })
@@ -151,7 +151,7 @@ export default async function plugin(fastify: FastifyInstance): Promise<void> {
 
     // GET /api/plugins/todo/stats — Statistiken
     fastify.get('/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-        const userId = (request as any).userId;
+        const userId = (request.user as any).userId;
 
         const stats = await db('plugin_todo_items')
             .where('user_id', userId)
