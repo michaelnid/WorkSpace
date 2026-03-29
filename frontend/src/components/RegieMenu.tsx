@@ -219,7 +219,7 @@ export function RegieMenu({ open, onClose }: RegieMenuProps) {
                                                 return (
                                                     <div key={path} className={`regie-menu-item ${animatingTab === path ? 'pin-animate' : ''}`}>
                                                         <button className="regie-menu-item-link" onClick={() => handleNavigate(item)}>
-                                                            <span className="regie-menu-item-icon">{item.icon}</span>
+                                                            <span className="regie-menu-item-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
                                                             <span className="regie-menu-item-label">{item.label}</span>
                                                         </button>
                                                         <button
@@ -246,7 +246,7 @@ export function RegieMenu({ open, onClose }: RegieMenuProps) {
                                                 return (
                                                     <div key={path} className={`regie-menu-item ${animatingTab === path ? 'pin-animate' : ''}`}>
                                                         <button className="regie-menu-item-link" onClick={() => handleNavigate(item)}>
-                                                            <span className="regie-menu-item-icon">{item.icon}</span>
+                                                            <span className="regie-menu-item-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
                                                             <span className="regie-menu-item-label">{item.label}</span>
                                                         </button>
                                                         <button

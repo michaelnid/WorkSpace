@@ -142,7 +142,7 @@ export function TopBar() {
                                     to={path}
                                     className={({ isActive }) => `topbar-nav-item pinned-tab ${isActive ? 'active' : ''}`}
                                 >
-                                    <span className="topbar-nav-item-icon">{item.icon}</span>
+                                    <span className="topbar-nav-item-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
                                     <span className="topbar-nav-item-label">{item.label.toUpperCase()}</span>
                                 </NavLink>
                             );
@@ -237,7 +237,7 @@ export function TopBar() {
                         const path = item.path.startsWith('/') ? item.path : `/${item.path}`;
                         return (
                             <NavLink key={`mobile-${path}`} to={path} className="topbar-mobile-item" onClick={() => setMobileMenuOpen(false)}>
-                                <span className="topbar-nav-item-icon">{item.icon}</span>
+                                <span className="topbar-nav-item-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
                                 {item.label}
                             </NavLink>
                         );
