@@ -310,8 +310,9 @@ fi
 git clone "$GIT_REPO" "$APP_DIR" 2>/dev/null
 print_ok "Repository geklont nach $APP_DIR"
 
-# Plugins-Ordner
+# Plugins-Ordner (mit CommonJS-Kontext, da Backend ESM ist)
 mkdir -p "$APP_DIR/plugins"
+echo '{"type":"commonjs"}' > "$APP_DIR/plugins/package.json"
 mkdir -p "$APP_DIR/uploads"
 mkdir -p "$APP_DIR/uploads/documents"
 mkdir -p "$APP_DIR/uploads/avatars"

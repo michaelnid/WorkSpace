@@ -573,6 +573,14 @@ export async function installPlugin(pluginId: string, options?: UpdateInstallOpt
         const pluginDir = path.join(config.app.pluginsDir, pluginId);
         await fs.mkdir(pluginDir, { recursive: true });
 
+        // Sicherstellen, dass plugins/ eine package.json hat (Modul-Kontext fuer Node.js)
+        const pluginsRootPkg = path.join(config.app.pluginsDir, 'package.json');
+        try {
+            await fs.access(pluginsRootPkg);
+        } catch {
+            await fs.writeFile(pluginsRootPkg, JSON.stringify({ type: 'commonjs' }, null, 2), 'utf-8');
+        }
+
         // Entpacken
         progress('Entpacke Plugin-Dateien', 70);
         await execFileAsync('tar', ['-xzf', tarPath, '-C', pluginDir]);
@@ -608,7 +616,7 @@ export async function installPlugin(pluginId: string, options?: UpdateInstallOpt
             await db.migrate.latest({
                 directory: migrationsDir,
                 tableName: `knex_migrations_${pluginId}`,
-                loadExtensions: ['.js'],
+                loadExtensions: ['.js', '.cjs'],
             });
         }
 
