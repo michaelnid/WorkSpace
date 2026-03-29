@@ -470,6 +470,18 @@ const data = await res.json();
 > Der `@mike/`-Alias ist stabil, unabhaengig von der Verzeichnistiefe,
 > und funktioniert sowohl mit `tsc` als auch mit Vite.
 
+### Router / Navigation
+
+Plugins koennen `react-router-dom` **nicht direkt importieren** (liegt
+ausserhalb der Plugin-`node_modules`-Aufloesung). Stattdessen den
+Re-Export ueber `@mike/` verwenden:
+
+```typescript
+import { useNavigate } from '@mike/hooks/usePluginNavigate';
+
+// Verfuegbar: useNavigate, useLocation, useParams, useSearchParams
+```
+
 ### Toast-Benachrichtigungen
 
 Zwei Systeme verfuegbar:
