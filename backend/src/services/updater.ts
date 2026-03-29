@@ -249,10 +249,10 @@ export async function getUpdateCheckInterval(): Promise<number> {
             const { decrypt } = await import('../core/encryption.js');
             const decrypted = decrypt(String(setting.value_encrypted)).trim();
             const parsed = parseInt(decrypted, 10);
-            return Number.isFinite(parsed) && parsed >= 60 ? parsed : 7200;
+            return Number.isFinite(parsed) && parsed >= 3600 ? parsed : 7200;
         } catch {
             const parsed = parseInt(String(setting.value_encrypted).trim(), 10);
-            return Number.isFinite(parsed) && parsed >= 60 ? parsed : 7200;
+            return Number.isFinite(parsed) && parsed >= 3600 ? parsed : 7200;
         }
     } catch {
         return 7200;
@@ -262,7 +262,7 @@ export async function getUpdateCheckInterval(): Promise<number> {
 export async function setUpdateCheckInterval(seconds: number): Promise<void> {
     const db = getDatabase();
     // Intervall ist kein Geheimnis — unverschlüsselt speichern
-    const value = Math.max(10, Math.round(seconds));
+    const value = Math.max(3600, Math.round(seconds));
     const existing = await db('settings')
         .where({ key: 'update.check_interval_seconds' })
         .whereNull('tenant_id')
