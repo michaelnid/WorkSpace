@@ -333,7 +333,7 @@ Der Frontend-Entry exportiert **benannte Arrays** — keine Default-Exports!
 ```tsx
 // plugins/mein-plugin/frontend/index.tsx
 import { lazy } from 'react';
-import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '../../../frontend/src/pluginRegistry';
+import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '@mike/pluginRegistry';
 
 const MainPage = lazy(() => import('./pages/MainPage'));
 const DashboardTile = lazy(() => import('./tiles/DashboardTile'));
@@ -397,7 +397,7 @@ export const dashboardTiles: PluginDashboardTile[] = [
 ```tsx
 // plugins/mein-plugin/frontend/tiles/DashboardTile.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch } from '../../../../frontend/src/context/AuthContext';
+import { apiFetch } from '@mike/context/AuthContext';
 
 export default function DashboardTile() {
     const [data, setData] = useState<any>(null);
@@ -421,19 +421,22 @@ export default function DashboardTile() {
 
 ### API-Calls aus dem Frontend
 
+Plugins verwenden den **`@mike/`-Alias** fuer alle Core-Imports.
+Dieser Alias wird in `tsconfig.json` und `vite.config.ts` definiert
+und zeigt auf `frontend/src/`.
+
 ```typescript
-// Import-Pfad: relativ zum Plugin-Verzeichnis
-import { apiFetch } from '../../../frontend/src/context/AuthContext';
+// @mike/ Alias — funktioniert aus jeder Plugin-Verzeichnistiefe
+import { apiFetch } from '@mike/context/AuthContext';
 
 // Automatisch authentifiziert (JWT wird mitgesendet)
 const res = await apiFetch('/api/plugins/mein-plugin/items');
 const data = await res.json();
 ```
 
-> **Wichtig:** Import-Pfade von Plugin-Frontend-Dateien muessen relativ
-> zum Plugin-Root zeigen. Plugins unter `plugins/todo/frontend/pages/`
-> brauchen `../../../../frontend/src/...` (vier Ebenen hoch).
-> Plugins unter `plugins/todo/frontend/` brauchen `../../../frontend/src/...`.
+> **Wichtig:** Niemals relative Pfade wie `../../../frontend/src/...` verwenden!
+> Der `@mike/`-Alias ist stabil, unabhaengig von der Verzeichnistiefe,
+> und funktioniert sowohl mit `tsc` als auch mit Vite.
 
 ### Toast-Benachrichtigungen
 
@@ -441,7 +444,7 @@ Zwei Systeme verfuegbar:
 
 **1. Modal-basiert (ModalProvider):**
 ```tsx
-import { useToast, useModal } from '../../../frontend/src/components/ModalProvider';
+import { useToast, useModal } from '@mike/components/ModalProvider';
 
 const toast = useToast();
 const modal = useModal();
@@ -459,7 +462,7 @@ const confirmed = await modal.confirm({
 
 **2. Inline-Toast (ToastContainer):**
 ```tsx
-import { useInlineToast, InlineToastContainer } from '../../../frontend/src/components/ToastContainer';
+import { useInlineToast, InlineToastContainer } from '@mike/components/ToastContainer';
 
 const inlineToast = useInlineToast();
 inlineToast.success('Inline-Nachricht');
