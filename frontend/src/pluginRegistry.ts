@@ -2,7 +2,7 @@
 // Nicht manuell bearbeiten.
 
 import type { ComponentType, LazyExoticComponent } from 'react';
-
+import * as plugin_todo_0 from '../../plugins/todo/frontend/index.tsx';
 
 export interface PluginRoute {
     path: string;
@@ -88,5 +88,15 @@ export interface PluginRegistryEntry {
 }
 
 export const pluginRegistry: PluginRegistryEntry[] = [
-
+    {
+        id: 'todo',
+        name: 'Aufgaben',
+        routes: (Array.isArray(plugin_todo_0.routes) ? plugin_todo_0.routes : []) as PluginRoute[],
+        navItems: (Array.isArray(plugin_todo_0.navItems) ? plugin_todo_0.navItems : []) as PluginNavItem[],
+        dashboardTiles: (Array.isArray(plugin_todo_0.dashboardTiles) ? plugin_todo_0.dashboardTiles : []) as PluginDashboardTile[],
+        extensionTiles: (Array.isArray(plugin_todo_0.extensionTiles) ? plugin_todo_0.extensionTiles : []) as PluginExtensionTile[],
+        settingsPanel: (plugin_todo_0.settingsPanel && typeof plugin_todo_0.settingsPanel === 'object' ? plugin_todo_0.settingsPanel : undefined) as PluginSettingsPanel | undefined,
+        searchProvider: (plugin_todo_0.searchProvider && typeof plugin_todo_0.searchProvider === 'object' ? plugin_todo_0.searchProvider : undefined) as PluginSearchProvider | undefined,
+        quickActions: (Array.isArray(plugin_todo_0.quickActions) ? plugin_todo_0.quickActions : []) as PluginQuickAction[],
+    }
 ];

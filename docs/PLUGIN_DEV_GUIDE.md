@@ -311,24 +311,109 @@ export async function down(knex: Knex): Promise<void> {
 
 ## 5. Frontend-Entwicklung
 
+### Plugin-Registry-System
+
+Das Frontend nutzt ein **automatisch generiertes Registry-System**.
+Der Generator liest alle `plugin.json`-Dateien und erzeugt `frontend/src/pluginRegistry.ts`.
+
+**Registry generieren (nach Aendern von plugin.json oder frontend_entry):**
+
+```bash
+node frontend/scripts/generate-plugin-registry.mjs
+```
+
+> Dieser Befehl muss nach dem Erstellen eines neuen Plugins oder dem Aendern
+> des `frontend_entry`-Pfads ausgefuehrt werden. Auf dem Server passiert das
+> automatisch beim Build.
+
 ### Einstiegspunkt: `frontend/index.tsx`
+
+Der Frontend-Entry exportiert **benannte Arrays** — keine Default-Exports!
 
 ```tsx
 // plugins/mein-plugin/frontend/index.tsx
-import React from 'react';
+import { lazy } from 'react';
+import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '../../../frontend/src/pluginRegistry';
 
-export default function MeinPluginPage() {
+const MainPage = lazy(() => import('./pages/MainPage'));
+const DashboardTile = lazy(() => import('./tiles/DashboardTile'));
+
+// SVG-Icon als String (fuer Navigation-Rendering)
+const navIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M..."/></svg>`;
+
+// Routes: Definiert Seiten die unter /<path> erreichbar sind
+export const routes: PluginRoute[] = [
+    {
+        path: '/mein-plugin',
+        component: MainPage,
+        permission: 'mein-plugin.view',
+    },
+];
+
+// NavItems: Erscheinen in der Regie-Seitenleiste und koennen in die TopBar gepinnt werden
+export const navItems: PluginNavItem[] = [
+    {
+        label: 'Mein Plugin',
+        icon: navIcon,
+        path: '/mein-plugin',
+        permission: 'mein-plugin.view',
+        order: 50,         // Sortierung (kleiner = weiter oben)
+        group: 'Tools',    // Optional: Gruppierung im Regie-Menu
+        groupIcon: '...',  // Optional: SVG fuer die Gruppe
+        groupOrder: 10,    // Optional: Reihenfolge der Gruppe
+    },
+];
+
+// DashboardTiles: Widgets auf dem Dashboard (Drag & Drop, resizable)
+export const dashboardTiles: PluginDashboardTile[] = [
+    {
+        id: 'mein-plugin-overview',
+        title: 'Mein Plugin',
+        description: 'Kurze Beschreibung fuer das Dashboard',
+        component: DashboardTile,
+        permission: 'mein-plugin.view',
+        order: 10,
+        defaultWidth: 12,       // Grid-Units (1 Unit = 20px)
+        defaultHeight: 8,
+        defaultVisible: true,   // Standardmaessig sichtbar
+    },
+];
+```
+
+### Verfuegbare Registry-Exports
+
+| Export | Typ | Beschreibung |
+|---|---|---|
+| `routes` | `PluginRoute[]` | Seiten-Routen (path + lazy component) |
+| `navItems` | `PluginNavItem[]` | Navigationseintraege (TopBar Pins, Regie-Menu) |
+| `dashboardTiles` | `PluginDashboardTile[]` | Dashboard-Widgets |
+| `extensionTiles` | `PluginExtensionTile[]` | Erweiterbare Slots auf anderen Seiten |
+| `settingsPanel` | `PluginSettingsPanel` | Einstellungs-Panel im Admin-Bereich |
+| `searchProvider` | `PluginSearchProvider` | Globale Suche-Integration |
+| `quickActions` | `PluginQuickAction[]` | Tastenkuerzel / Schnellaktionen |
+
+### Dashboard-Tile Komponente
+
+```tsx
+// plugins/mein-plugin/frontend/tiles/DashboardTile.tsx
+import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../../../../frontend/src/context/AuthContext';
+
+export default function DashboardTile() {
+    const [data, setData] = useState<any>(null);
+
+    const load = useCallback(async () => {
+        const res = await apiFetch('/api/plugins/mein-plugin/stats');
+        if (res.ok) setData(await res.json());
+    }, []);
+
+    useEffect(() => { void load(); }, [load]);
+
+    if (!data) return <div className="text-muted">Laden...</div>;
+
     return (
-        <div>
-            <div className="page-header">
-                <h1 className="page-title">Mein Plugin</h1>
-                <p className="page-subtitle">Plugin-Beschreibung</p>
-            </div>
-
-            <div className="card">
-                <div className="card-title">Inhalt</div>
-                <p>Plugin-UI hier.</p>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* Kompakte Darstellung fuer Dashboard-Widget */}
         </div>
     );
 }
@@ -337,12 +422,18 @@ export default function MeinPluginPage() {
 ### API-Calls aus dem Frontend
 
 ```typescript
-import { apiFetch } from '../../../../frontend/src/context/AuthContext';
+// Import-Pfad: relativ zum Plugin-Verzeichnis
+import { apiFetch } from '../../../frontend/src/context/AuthContext';
 
 // Automatisch authentifiziert (JWT wird mitgesendet)
 const res = await apiFetch('/api/plugins/mein-plugin/items');
 const data = await res.json();
 ```
+
+> **Wichtig:** Import-Pfade von Plugin-Frontend-Dateien muessen relativ
+> zum Plugin-Root zeigen. Plugins unter `plugins/todo/frontend/pages/`
+> brauchen `../../../../frontend/src/...` (vier Ebenen hoch).
+> Plugins unter `plugins/todo/frontend/` brauchen `../../../frontend/src/...`.
 
 ### Toast-Benachrichtigungen
 
@@ -350,7 +441,7 @@ Zwei Systeme verfuegbar:
 
 **1. Modal-basiert (ModalProvider):**
 ```tsx
-import { useToast, useModal } from '../../../../frontend/src/components/ModalProvider';
+import { useToast, useModal } from '../../../frontend/src/components/ModalProvider';
 
 const toast = useToast();
 const modal = useModal();
@@ -368,7 +459,7 @@ const confirmed = await modal.confirm({
 
 **2. Inline-Toast (ToastContainer):**
 ```tsx
-import { useInlineToast, InlineToastContainer } from '../../../../frontend/src/components/ToastContainer';
+import { useInlineToast, InlineToastContainer } from '../../../frontend/src/components/ToastContainer';
 
 const inlineToast = useInlineToast();
 inlineToast.success('Inline-Nachricht');

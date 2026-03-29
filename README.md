@@ -41,11 +41,13 @@ Modulares Enterprise-Framework mit Plugin-System, Multi-Tenancy und rollenbasier
 
 ## Plugins
 
-Plugins werden in einem separaten Repository entwickelt und veroeffentlicht:
+Plugins werden direkt im Repository unter `plugins/` entwickelt und mit jedem Update automatisch ausgeliefert. Kein separates Repository noetig.
 
-**[michaelnid/WorkSpace-Plugins](https://github.com/michaelnid/WorkSpace-Plugins)**
+- **Aktivierung/Deaktivierung** ueber das Admin-Dashboard (Updates & Deployment)
+- **Migrationen** laufen automatisch beim Server-Neustart
+- **Kein Build-Step** — TypeScript wird direkt ueber `tsx` ausgefuehrt
 
-Installierte Plugins koennen ueber das Admin-Dashboard verwaltet werden (Updates, Aktivierung, Deinstallation). Die Plugin-Entwicklungsdokumentation liegt unter `PLUGIN_DEV/PLUGIN_DEV_GUIDE.md`.
+Die Plugin-Entwicklungsdokumentation liegt unter `docs/PLUGIN_DEV_GUIDE.md`.
 
 ## Installation
 
