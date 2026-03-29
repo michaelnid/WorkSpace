@@ -20,11 +20,15 @@
         "paths": {
             "@/*": [
                 "src/*"
+            ],
+            "@mike/*": [
+                "src/*"
             ]
         }
     },
     "include": [
-        "src"
+        "src",
+        "../plugins/*/frontend/**/*"
     ],
     "references": [
         {

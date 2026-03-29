@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch } from '../../../frontend/src/context/AuthContext';
-import { useToast, useModal } from '../../../frontend/src/components/ModalProvider';
+import { apiFetch } from '@mike/context/AuthContext';
+import { useToast, useModal } from '@mike/components/ModalProvider';
 
 // SVG Icons
 const plusIcon = (

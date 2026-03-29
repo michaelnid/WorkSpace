@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '../../../frontend/src/pluginRegistry';
+import type { PluginRoute, PluginNavItem, PluginDashboardTile } from '@mike/pluginRegistry';
 
 const TodoPage = lazy(() => import('./pages/TodoPage'));
 
